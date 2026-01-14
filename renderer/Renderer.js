@@ -10,10 +10,12 @@ game.style.background = BACKGROUND;
 const ctx = game.getContext("2d");
 console.log(ctx);
 
-function putPixel(v, color) {
-  const s = 1;
-  ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
-  ctx.fillRect(v.x - s / 2, v.y - s / 2, s, s);
+function putPixelBuffer(x, y, color) {
+  const index = 4 * (y * Cw + x);
+  buffer[index] = color.r;
+  buffer[index + 1] = color.g;
+  buffer[index + 2] = color.b;
+  buffer[index + 3] = 255;
 }
 
 function screen(v) {
@@ -92,7 +94,7 @@ function computeIntensity(P, N, V, s) {
     if (light.type === "ambient") {
       i += light.intensity;
     } else {
-      let L,t_max;
+      let L, t_max;
 
       if (light.type === "point") {
         L = light.position.sub(P).unit();
@@ -206,8 +208,11 @@ const Vw = 1;
 const Vh = 1;
 const d = 1;
 
+const imageData = ctx.createImageData(Cw, Ch);
+const buffer = imageData.data; // Uint8ClampedArray
+
 const FPS = 60;
-const SCALE = 1/2.5;
+const SCALE = 1/2;
 let dx = 0.5;
 let angle = (2 * Math.PI) / FPS;
 const reflections = 1;
@@ -220,11 +225,16 @@ function frame() {
       const D = CanvasToViewport(x, y);
       const pixelColor = TraceRay(O, D, 1, inf, reflections);
 
-      const pixel = new Vector((2 * x) / Cw, (2 * y) / Ch);
-      putPixel(screen(pixel), pixelColor);
+      const sx = Math.floor(x + Cw / 2);
+      const sy = Math.floor(Ch / 2 - y);
+      if (sx >= 0 && sx < Cw && sy >= 0 && sy < Ch) {
+        putPixelBuffer(sx, sy, pixelColor);
+      }
     }
   }
-  console.log(scene.lights[1].position);
+  // console.log(scene.lights[1].position);
+  ctx.putImageData(imageData, 0, 0);
+  buffer.fill(0); // fast clear
   const animate = setTimeout(frame, 1000 / FPS);
 }
 
