@@ -1,4 +1,5 @@
 import { Vector, Color, Matrix } from "../math/Position & Color Vectors, Matrices.js";
+import { Camera } from "./Camera.js";
 
 const BACKGROUND = new Color(48, 48, 48);
 
@@ -6,6 +7,13 @@ console.log(game);
 game.width = 600;
 game.height = 600;
 game.style.background = BACKGROUND;
+const O = new Vector(0, 0, 0);
+const inf = Infinity;
+const Cw = game.width;
+const Ch = game.height;
+const Vw = 1;
+const Vh = 1;
+const d = 1;
 
 const ctx = game.getContext("2d");
 console.log(ctx);
@@ -37,7 +45,7 @@ function CanvasToViewport(x, y) {
 function closestIntersection(O, D, t_min, t_max) {
   let t_closest = Infinity;
   let closestSphere = null;
-  for (const sphere of scene.spheres) {
+  for (const sphere of scene.objects.spheres) {
     const [t1, t2] = IntersectionRaySphere(O, D, sphere);
     if (t1 > t_min && t1 < t_max && t1 < t_closest) {
       t_closest = t1;
@@ -90,7 +98,7 @@ function IntersectionRaySphere(O, D, sphere) {
 function computeIntensity(P, N, V, s) {
   let i = 0;
 
-  for (const light of scene.lights) {
+  for (const light of scene.objects.lights) {
     if (light.type === "ambient") {
       i += light.intensity;
     } else {
@@ -139,103 +147,161 @@ function translate(v, w) {
   // return new Vector(v.x, v.y, v.z);
 }
 
-function rotate_xz(v, angle) {
+function rotate_xz(v, dTheta) {
+  const cos = Math.cos(dTheta);
+  const sin = Math.sin(dTheta);
+
   const x = v.x;
   const z = v.z;
-  v.x = x * Math.cos(angle) - z * Math.sin(angle);
-  v.z = x * Math.sin(angle) + z * Math.cos(angle);
 
-  const mag = v.mag();
-  v.x /= mag;
-  v.y /= mag;
-  v.z /= mag;
+  v.x = x * cos - z * sin;
+  v.z = x * sin + z * cos;
+}
+function rotateCam(Cam, r, dt) {
+  Cam.position.x = r * Math.cos(theta);
+  Cam.position.z = r * Math.sin(theta);
 }
 
 const scene = {
-  spheres: [
-    {
-      center: new Vector(0, -5001, 0),
-      radius: 5000,
-      color: new Color(255, 255, 0), //base yellow
-      specular: 500,
-      reflective: 0.2,
-    },
-    {
-      center: new Vector(0, -0.5, 3),
-      radius: 0.5,
-      color: new Color(255, 0, 0), // red
-      specular: 500,
-      reflective: 0.1,
-    },
-    {
-      center: new Vector(-2, 0, 6),
-      radius: 1,
-      color: new Color(0, 255, 0), //green
-      specular: 500,
-      reflective: 0.1,
-    },
-    {
-      center: new Vector(2, 0, 13),
-      radius: 1,
-      color: new Color(0, 0, 255), // blue
-      specular: 500,
-      reflective: 0.2,
-    },
-  ],
-  lights: [
-    {
-      type: "ambient",
-      intensity: 0.15,
-    },
-    {
-      type: "directional",
-      intensity: 0.8,
-      direction: new Vector(1, 5, -3),
-    },
-    {
-      type: "point",
-      intensity: 0.1,
-      position: new Vector(-10, 10, -2),
-    },
-  ],
+  activeCamera: "main",
+  debugCamera: "debug",
+  cameras: {
+    main: new Camera(new Vector(0, 1, -5), new Vector(0, 0, 0)),
+    debug: new Camera(new Vector(30, 5, 0), new Vector(0, 0, 0)),
+  },
+  objects: {
+    spheres: [
+      {
+        center: new Vector(0, -5001, 0),
+        radius: 5000,
+        color: new Color(255, 255, 0), //base yellow
+        specular: 500,
+        reflective: 0.2,
+      },
+      {
+        center: new Vector(0, -0.5, 3),
+        radius: 0.5,
+        color: new Color(255, 0, 0), // red
+        specular: 500,
+        reflective: 0.1,
+      },
+      {
+        center: new Vector(-2, 0, 6),
+        radius: 1,
+        color: new Color(0, 255, 0), //green
+        specular: 500,
+        reflective: 0.1,
+      },
+      {
+        center: new Vector(2, 0, 13),
+        radius: 1,
+        color: new Color(0, 0, 255), // blue
+        specular: 500,
+        reflective: 0.2,
+      },
+    ],
+    lights: [
+      {
+        type: "ambient",
+        intensity: 0.15,
+      },
+      {
+        type: "directional",
+        intensity: 0.8,
+        direction: new Vector(1, 5, -3),
+      },
+      {
+        type: "point",
+        intensity: 0.1,
+        position: new Vector(-10, 10, -2),
+      },
+    ],
+  },
 };
 
-const O = new Vector(0, 0, 0);
-const inf = Infinity;
-const Cw = game.width;
-const Ch = game.height;
-const Vw = 1;
-const Vh = 1;
-const d = 1;
+let Cam = scene.cameras[scene.activeCamera];
+let rotationM = Cam.rotationM();
+let r = Cam.target.sub(Cam.position).mag();
+
+function changeCamAngle() {
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() == "f" && Cam == scene.cameras[scene.activeCamera]) {
+      Cam = scene.cameras[scene.debugCamera];
+      rotationM = Cam.rotationM();
+      r = Cam.target.sub(Cam.position).mag();
+      console.log("debugCamera");
+    } else if (e.key.toLowerCase() == "f" && Cam == scene.cameras[scene.debugCamera]) {
+      Cam = scene.cameras[scene.activeCamera];
+      r = Cam.target.sub(Cam.position).mag();
+      rotationM = Cam.rotationM();
+      console.log("activeCamera");
+    }
+  });
+}
+changeCamAngle();
+function pauseAnimation() {
+  document.addEventListener("keydown", (e) => {
+    if (e.code == "Space") {
+      paused = !paused;
+    }
+  });
+}
+pauseAnimation();
 
 const imageData = ctx.createImageData(Cw, Ch);
 const buffer = imageData.data; // Uint8ClampedArray
-
-const FPS = 60;
-const SCALE = 1/2;
+const FPS = 10;
+const SCALE = 1 / 2;
+const STEP = 1 / SCALE;
 let dx = 0.5;
-let angle = (2 * Math.PI) / FPS;
+let theta = 0;
+const angularspeed = Math.PI / 4;
+// const angularspeed = FPS / (4 * Math.PI)
 const reflections = 1;
-//point light - (-10,0,6)
+let paused = false;
+
+let lastTime = performance.now();
+
+
+
 
 function frame() {
-  rotate_xz(scene.lights[1].direction, angle);
-  for (let x = -Cw / 2; x < Cw / 2; x += 1 / SCALE) {
-    for (let y = -Ch / 2; y < Ch / 2; y += 1 / SCALE) {
-      const D = CanvasToViewport(x, y);
-      const pixelColor = TraceRay(O, D, 1, inf, reflections);
+  const now = performance.now();
+  let dt = (now - lastTime) / 1000;
+  dt = Math.min(dt, 0.05);
+  lastTime = now;
+
+  if (!paused) {
+    const dTheta = angularspeed * dt;
+    theta += dTheta
+
+    rotateCam(Cam, r, dt);
+    // rotate_xz(scene.objects.lights[1].direction, dt);
+    
+    rotationM = Cam.rotationM();
+  }
+
+  //rendering
+  for (let x = -Cw / 2; x < Cw / 2; x += STEP) {
+    for (let y = -Ch / 2; y < Ch / 2; y += STEP) {
+      const D = rotationM.transform(CanvasToViewport(x, y)).unit();
+      const pixelColor = TraceRay(Cam.position, D, 1, inf, reflections);
 
       const sx = Math.floor(x + Cw / 2);
       const sy = Math.floor(Ch / 2 - y);
+      /// this below loop fills the black holes that comes due to scaling
       if (sx >= 0 && sx < Cw && sy >= 0 && sy < Ch) {
-        putPixelBuffer(sx, sy, pixelColor);
+        for (let dx = 0; dx < STEP; dx++) {
+          for (let dy = 0; dy < STEP; dy++) {
+            putPixelBuffer(sx + dx, sy + dy, pixelColor);
+          }
+        }
       }
     }
   }
-  // console.log(scene.lights[1].position);
+  console.log(scene.objects.lights[1].position);
   ctx.putImageData(imageData, 0, 0);
-  buffer.fill(0); // fast clear
-  const animate = setTimeout(frame, 1000 / FPS);
+  requestAnimationFrame(frame);
 }
 
 frame();
