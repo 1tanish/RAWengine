@@ -4,10 +4,10 @@ import { Camera } from "./Camera.js";
 const BACKGROUND = new Color(48, 48, 48);
 
 console.log(game);
-game.width = 600;
-game.height = 600;
+game.width = window.innerWidth;
+game.height = window.innerHeight;
 game.style.background = BACKGROUND;
-const O = new Vector(0, 0, 0);
+// const O = new Vector(0, 0, 0);
 const inf = Infinity;
 const Cw = game.width;
 const Ch = game.height;
@@ -26,13 +26,13 @@ function putPixelBuffer(x, y, color) {
   buffer[index + 3] = 255;
 }
 
-function screen(v) {
-  return new Vector(((1 + v.x) * game.width) / 2, ((1 - v.y) * game.height) / 2);
-}
+// function screen(v) {
+//   return new Vector(((1 + v.x) * game.width) / 2, ((1 - v.y) * game.height) / 2);
+// }
 
-function project(v) {
-  return new Vector(v.x / v.z, v.y / v.z);
-}
+// function project(v) {
+//   return new Vector(v.x / v.z, v.y / v.z);
+// }
 
 function reflectedRay(R, N) {
   return N.multiK(2 * N.dot(R.unit())).sub(R.unit());
@@ -157,17 +157,13 @@ function rotate_xz(v, dTheta) {
   v.x = x * cos - z * sin;
   v.z = x * sin + z * cos;
 }
-function rotateCam(Cam, r, dt) {
-  Cam.position.x = r * Math.cos(theta);
-  Cam.position.z = r * Math.sin(theta);
-}
 
 const scene = {
-  activeCamera: "main",
-  debugCamera: "debug",
+  activeCam: "main",
+  // wideAngleCam: "wide",
   cameras: {
-    main: new Camera(new Vector(0, 1, -5), new Vector(0, 0, 0)),
-    debug: new Camera(new Vector(30, 5, 0), new Vector(0, 0, 0)),
+    main: new Camera(new Vector(0, 1, -5), new Vector(0, -0.5, 3)),
+    // wide: new Camera(new Vector(30, 5, 0), new Vector(0, 0, 0)),
   },
   objects: {
     spheres: [
@@ -182,7 +178,7 @@ const scene = {
         center: new Vector(0, -0.5, 3),
         radius: 0.5,
         color: new Color(255, 0, 0), // red
-        specular: 500,
+        specular: 1500,
         reflective: 0.1,
       },
       {
@@ -219,26 +215,132 @@ const scene = {
   },
 };
 
-let Cam = scene.cameras[scene.activeCamera];
-let rotationM = Cam.rotationM();
-let r = Cam.target.sub(Cam.position).mag();
+let Cam = scene.cameras[scene.activeCam];
+let rotationM = new Matrix(getCameraBasis(Cam).right, getCameraBasis(Cam).up, getCameraBasis(Cam).forward);
 
-function changeCamAngle() {
-  document.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() == "f" && Cam == scene.cameras[scene.activeCamera]) {
-      Cam = scene.cameras[scene.debugCamera];
-      rotationM = Cam.rotationM();
-      r = Cam.target.sub(Cam.position).mag();
-      console.log("debugCamera");
-    } else if (e.key.toLowerCase() == "f" && Cam == scene.cameras[scene.debugCamera]) {
-      Cam = scene.cameras[scene.activeCamera];
-      r = Cam.target.sub(Cam.position).mag();
-      rotationM = Cam.rotationM();
-      console.log("activeCamera");
+let targetSelection = false;
+document.addEventListener("keydown", (e) => (e.key == "1" ? (targetSelection = true) : ""));
+document.addEventListener("keyup", (e) => (targetSelection = false));
+let PanningEnabled = false;
+document.addEventListener("keydown", (e) => (e.key == "Shift" && targetSelection == false ? (PanningEnabled = true) : ""));
+document.addEventListener("keyup", (e) => (e.key == "Shift" ? (PanningEnabled = false) : ""));
+document.addEventListener("mousedown", (e) => (e.button == 1 && targetSelection == false ? (PanningEnabled = true) : ""));
+document.addEventListener("mouseup", (e) => (PanningEnabled = false));
+
+function getCameraBasis(cam) {
+  const forward = cam.target.sub(cam.position).unit();
+  const right = forward.cross(new Vector(0, 1, 0)).unit();
+  const up = right.cross(forward);
+
+  return { forward, right, up };
+}
+function getMouseCanvasPos(e) {
+  const rect = game.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top,
+  };
+}
+function mouseToViewport(mx, my) {
+  return new Vector(((mx - Cw / 2) * Vw) / Cw, ((Ch / 2 - my) * Vh) / Ch, d);
+}
+function getMouseRay(e) {
+  const { x, y } = getMouseCanvasPos(e);
+  const Dv = mouseToViewport(x, y);
+
+  const { forward, right, up } = getCameraBasis(Cam);
+
+  const Dw = forward.add(right.multiK(Dv.x)).add(up.multiK(Dv.y)).unit();
+
+  return Dw;
+}
+function pickObject(e) {
+  const rayDir = getMouseRay(e);
+  const [obj, t] = closestIntersection(Cam.position, rayDir, 0.001, inf);
+
+  if (!obj) return null;
+  return obj;
+}
+function MouseInp() {
+  let lastX = null;
+  let lastY = null;
+  // let clickedX = null;
+  let clickedY = null;
+  let dragging = false;
+
+  document.addEventListener("mousedown", (e) => {
+    game.style.cursor = 'grabbing'
+    if (targetSelection) {
+      if (e.button !== 0) return;
+
+      const picked = pickObject(e);
+      if (!picked) return;
+
+      Cam.target = picked.center;
+      Cam.radius = Cam.calcR();
+      updateCameraPosition(Cam);
+    }
+    if ((e.button === 1 || e.button === 0) && targetSelection === false) {
+      dragging = true;
+      // clickedX = e.clientX;
+      clickedY = e.clientY;
+      lastX = e.clientX;
+      lastY = e.clientY;
     }
   });
+  document.addEventListener("mouseup", () => {
+    dragging = false;
+    game.style.cursor = 'grab'
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+
+    let dx = e.clientX - lastX;
+    let dy = -e.clientY + lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (PanningEnabled) {
+      const panSpeed = sensitivity * Cam.radius;
+
+      const { right, up } = getCameraBasis(Cam);
+
+      Cam.target = Cam.target.sub(right.multiK(dx * panSpeed)).sub(up.multiK(dy * panSpeed));
+
+      updateCameraPosition(Cam);
+      return;
+    }
+    Cam.pitch = window.innerHeight / 2 - clickedY > Cam.target.y ? Cam.pitch + dy * sensitivity : Cam.pitch - dy * sensitivity;
+    Cam.yaw = window.innerHeight / 2 - clickedY > Cam.target.y ? Cam.yaw + dx * sensitivity : Cam.yaw - dx * sensitivity;
+
+    const limit = Math.PI / 2 - 0.01;
+    Cam.pitch = Math.max(-limit, Math.min(limit, Cam.pitch));
+    updateCameraPosition(Cam);
+  });
+
+  game.addEventListener("wheel", (e) => {
+    e.preventDefault();
+
+    Cam.radius *= 1 + e.deltaY * sensitivity;
+    Cam.radius = Math.max(2, Math.min(Cam.radius, inf));
+    updateCameraPosition(Cam);
+  });
 }
-changeCamAngle();
+MouseInp();
+
+function updateCameraPosition(cam) {
+  const { forward, right, up } = getCameraBasis(Cam);
+  if (!isFinite(cam.radius)) return;
+  const cp = Math.cos(cam.pitch);
+  const sp = Math.sin(cam.pitch);
+  const cy = Math.cos(cam.yaw);
+  const sy = Math.sin(cam.yaw);
+
+  cam.position.x = cam.target.x + cam.radius * cp * sy;
+  cam.position.y = cam.target.y + cam.radius * sp;
+  cam.position.z = cam.target.z + cam.radius * cp * cy;
+}
+
 function pauseAnimation() {
   document.addEventListener("keydown", (e) => {
     if (e.code == "Space") {
@@ -248,23 +350,19 @@ function pauseAnimation() {
 }
 pauseAnimation();
 
+const SCALE = 1 / 4
+
 const imageData = ctx.createImageData(Cw, Ch);
-const buffer = imageData.data; // Uint8ClampedArray
-const FPS = 10;
-const SCALE = 1 / 2;
+const buffer = imageData.data;
 const STEP = 1 / SCALE;
 let dx = 0.5;
 let theta = 0;
 const angularspeed = Math.PI / 4;
-// const angularspeed = FPS / (4 * Math.PI)
 const reflections = 1;
 let paused = false;
+const sensitivity = 0.002;
 
 let lastTime = performance.now();
-
-
-
-
 function frame() {
   const now = performance.now();
   let dt = (now - lastTime) / 1000;
@@ -273,15 +371,12 @@ function frame() {
 
   if (!paused) {
     const dTheta = angularspeed * dt;
-    theta += dTheta
-
-    rotateCam(Cam, r, dt);
-    // rotate_xz(scene.objects.lights[1].direction, dt);
-    
-    rotationM = Cam.rotationM();
+    theta += dTheta;
+    rotate_xz(scene.objects.lights[1].direction, dt);
   }
 
-  //rendering
+  rotationM = new Matrix(getCameraBasis(Cam).right, getCameraBasis(Cam).up, getCameraBasis(Cam).forward);
+  //////////////////////// rendering
   for (let x = -Cw / 2; x < Cw / 2; x += STEP) {
     for (let y = -Ch / 2; y < Ch / 2; y += STEP) {
       const D = rotationM.transform(CanvasToViewport(x, y)).unit();
@@ -289,17 +384,18 @@ function frame() {
 
       const sx = Math.floor(x + Cw / 2);
       const sy = Math.floor(Ch / 2 - y);
-      /// this below loop fills the black holes that comes due to scaling
-      if (sx >= 0 && sx < Cw && sy >= 0 && sy < Ch) {
+      //////////////////// subsampling
+      if (SCALE < 1 && (sx >= 0 && sx < Cw && sy >= 0 && sy < Ch)) {
         for (let dx = 0; dx < STEP; dx++) {
           for (let dy = 0; dy < STEP; dy++) {
             putPixelBuffer(sx + dx, sy + dy, pixelColor);
           }
         }
+      } else{
+        putPixelBuffer(sx, sy , pixelColor);
       }
     }
   }
-  console.log(scene.objects.lights[1].position);
   ctx.putImageData(imageData, 0, 0);
   requestAnimationFrame(frame);
 }
