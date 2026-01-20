@@ -47,7 +47,7 @@ class Color {
 }
 
 BACKGROUND = new Color(48, 48, 48);
-
+// add transition to every element
 console.log(game);
 game.width = 600;
 game.height = 600;

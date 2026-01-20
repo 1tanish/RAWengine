@@ -4,8 +4,10 @@ import { Camera } from "./Camera.js";
 const BACKGROUND = new Color(48, 48, 48);
 
 console.log(game);
+const aspectRatio = 1 / 1;
 game.width = window.innerWidth;
 game.height = window.innerHeight;
+// game.height = game.width / aspectRatio;
 game.style.background = BACKGROUND;
 // const O = new Vector(0, 0, 0);
 const inf = Infinity;
@@ -158,6 +160,10 @@ function rotate_xz(v, dTheta) {
   v.z = x * sin + z * cos;
 }
 
+function smoothstep(t) {
+  return t * t * (3 - 2 * t);
+}
+
 const scene = {
   activeCam: "main",
   // wideAngleCam: "wide",
@@ -269,16 +275,24 @@ function MouseInp() {
   let dragging = false;
 
   document.addEventListener("mousedown", (e) => {
-    game.style.cursor = 'grabbing'
+    game.style.cursor = "grabbing";
     if (targetSelection) {
       if (e.button !== 0) return;
 
       const picked = pickObject(e);
       if (!picked) return;
 
-      Cam.target = picked.center;
-      Cam.radius = Cam.calcR();
-      updateCameraPosition(Cam);
+      // Cam.target = picked.center;
+      // Cam.radius = Cam.calcR();
+      // updateCameraPosition(Cam);
+      camTransition.active = true;
+      camTransition.startTarget = Cam.target;
+      camTransition.endTarget = picked.center;
+
+      camTransition.startRadius = Cam.radius;
+      camTransition.endRadius = Cam.position.sub(picked.center).mag();
+
+      camTransition.startTime = performance.now();
     }
     if ((e.button === 1 || e.button === 0) && targetSelection === false) {
       dragging = true;
@@ -290,10 +304,11 @@ function MouseInp() {
   });
   document.addEventListener("mouseup", () => {
     dragging = false;
-    game.style.cursor = 'grab'
+    game.style.cursor = "grab";
   });
 
   document.addEventListener("mousemove", (e) => {
+    if (camTransition.active) return;
     if (!dragging) return;
 
     let dx = e.clientX - lastX;
@@ -350,7 +365,7 @@ function pauseAnimation() {
 }
 pauseAnimation();
 
-const SCALE = 1 / 4
+const SCALE = 1 / 4;
 
 const imageData = ctx.createImageData(Cw, Ch);
 const buffer = imageData.data;
@@ -359,11 +374,36 @@ let dx = 0.5;
 let theta = 0;
 const angularspeed = Math.PI / 4;
 const reflections = 1;
-let paused = false;
+let paused = true;
 const sensitivity = 0.002;
+let camTransition = {
+  active: false,
+  startTarget: null,
+  endTarget: null,
+  startRadius: 0,
+  endRadius: 0,
+  startTime: 0,
+  duration: 0.4
+};
 
 let lastTime = performance.now();
 function frame() {
+  if (camTransition.active) {
+    const now = performance.now();
+    let t = (now - camTransition.startTime) / (camTransition.duration * 1000);
+    t = Math.min(t, 1);
+
+    const k = smoothstep(t);
+
+    ////// interpolation
+    Cam.target = camTransition.startTarget.multiK(1 - k).add(camTransition.endTarget.multiK(k));
+    Cam.radius = camTransition.startRadius * (1 - k) + camTransition.endRadius * k;
+    updateCameraPosition(Cam);
+
+    if (t === 1) {
+      camTransition.active = false;
+    }
+  }
   const now = performance.now();
   let dt = (now - lastTime) / 1000;
   dt = Math.min(dt, 0.05);
@@ -385,14 +425,14 @@ function frame() {
       const sx = Math.floor(x + Cw / 2);
       const sy = Math.floor(Ch / 2 - y);
       //////////////////// subsampling
-      if (SCALE < 1 && (sx >= 0 && sx < Cw && sy >= 0 && sy < Ch)) {
+      if (SCALE < 1 && sx >= 0 && sx < Cw && sy >= 0 && sy < Ch) {
         for (let dx = 0; dx < STEP; dx++) {
           for (let dy = 0; dy < STEP; dy++) {
             putPixelBuffer(sx + dx, sy + dy, pixelColor);
           }
         }
-      } else{
-        putPixelBuffer(sx, sy , pixelColor);
+      } else {
+        putPixelBuffer(sx, sy, pixelColor);
       }
     }
   }
