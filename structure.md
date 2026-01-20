@@ -3,14 +3,14 @@
 This document defines the **complete structure, purpose, and data flow**
 of RAWengine — a from-scratch **Simulation + Hardcore Graphics engine**.
 
----
+#### ***✅ - Implemented***
 
-## Root Directory
+#### ***❌ - Not implemented yet***
 
----
+## Root Directory - engine
 
-## engine/core — Engine Backbone
 
+## engine/core — Engine Backbone ❌ 
 Purpose:  
 Controls execution order, time management, and orchestration.
 
@@ -28,25 +28,29 @@ Rules:
 - Core never draws
 - Core never computes physics equations
 
----
-
 ## engine/math — Pure Mathematics Layer
 
 Purpose:  
 Standalone math library, portable to script
 
-Vector3.js:
-- add / subtract / scale
-- dot / cross
-- length / normalize
+### Position & Color Vectors, Matrices
 
-Matrix4.js:
-- identity
-- translation
-- rotationX / rotationY / rotationZ
-- scale
-- matrix × matrix
-- matrix × vector
+- #### Vector Class: 
+    - mag / unit ✅
+    - add / subtract / scale ✅
+    - dot / cross ✅
+
+- #### Matrix Class:
+    - identity (default matrix) ✅
+    - vector Transformation ✅
+    - determinant ✅
+    - translation ❌
+    - rotationX / rotationY / rotationZ ❌
+    - scale ❌
+    - matrix × matrix ❌
+- #### Color Class:
+    - add / sub / scale ✅
+    - change Intensity ✅
 
 Rules:
 - No canvas
@@ -60,21 +64,21 @@ Rules:
 Purpose:  
 Transforms geometry into pixels.
 
-Renderer.js:
-- World → View → Projection
-- Triangle rasterization
-- Back-face culling
-- Z-buffer
-- Shading
+### Renderer.js:
+- World → View → Projection ✅
+- Triangle rasterization ❌
+- Back-face culling ❌
+- Z-buffer ❌
+- Shading ❌
 
-Camera.js:
-- Position (x, y, z)
-- Orientation (yaw, pitch)
-- View matrix
-- Projection matrix
+### Camera.js:
+- Position (x, y, z) ✅
+- Orientation (yaw, pitch) ✅
+- View matrix ❌
+- Projection matrix ❌
 
-Mesh.js:
-- Vertex list
+### Mesh.js: ❌
+- Vertex list 
 - Triangle index list
 - Local transform
 
@@ -84,7 +88,7 @@ Rules:
 
 ---
 
-## engine/physics — Simulation Engine
+## engine/physics — Simulation Engine ❌
 
 Purpose:  
 Computes physical truth independent of visuals.
@@ -115,7 +119,7 @@ Rules:
 
 ---
 
-## main.js — Scene Definition
+## main.js — Scene Definition  ❌
 
 Purpose:  
 Defines experiments and scenes.
@@ -142,7 +146,7 @@ Canvas
 
 ---
 
-## Design Philosophy
+<!-- ## Design Philosophy
 
 - Correctness before performance
 - Visualization as debugging
@@ -153,4 +157,4 @@ Canvas
 ---
 
 This structure is intentionally strict.
-Breaking boundaries early will slow you down later.
+Breaking boundaries early will slow you down later. -->

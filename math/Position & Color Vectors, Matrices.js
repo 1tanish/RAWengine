@@ -68,7 +68,6 @@ export class Matrix {
     return this.m00 * this.det2(this.m11, this.m12, this.m21, this.m22) - this.m01 * this.det2(this.m10, this.m12, this.m20, this.m22) + this.m02 * this.det2(this.m10, this.m11, this.m20, this.m21);
   }
 }
-
 // const i = new Vector(0, 1, 0); // basis vector i
 // const j = new Vector(-1, 0, 0); // basis vector j
 // const k = new Vector(0, 0, 1); // basis vector k
