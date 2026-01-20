@@ -21,21 +21,34 @@ RAWengine is a learning focused rendering engine that implements core computer g
 
 ---
 
-## Project Structure
+## Project Structure *(current)*
 
 ```
 RAWengine/
 │
+├── core/
+│   ├── Engine.js
+│   └── Time.js
+│
 ├── math/
-│   ├── Vectors.js
-│   ├── Matrix.js
+│   └── Position & Color Vectors, Matrices.js
+│
+├── physics/
+│   ├── Collision.js
+│   ├── Forces.js
+│   ├── Integrator.js
+│   └── RigidBody.js
 │
 ├── renderer/
 │   ├── Camera.js
-│   ├── Renderer.js
+│   └── Renderer.js
 │
 ├── index.html
-└── README.md
+├── script.js
+├── README.md
+├── LOG.md
+├── structure.md
+└── .gitignore
 ```
 
 ---
