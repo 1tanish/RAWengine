@@ -5,7 +5,7 @@ const BACKGROUND = new Color(48, 48, 48);
 
 console.log(game);
 const aspectRatio = 1 / 1;
-game.width = window.innerWidth;
+game.width = 600;
 // game.height = window.innerHeight;
 game.height = game.width / aspectRatio;
 game.style.background = BACKGROUND;
@@ -138,7 +138,7 @@ function computeIntensity(P, N, V, s) {
 }
 
 function translate(v, w) {
-  dl = w.sub(v).unit();
+  const dl = w.sub(v).unit();
   if (v.x != w.x || v.y != w.y || v.z != w.z) {
     v.x = v.x + dl.x;
     v.y = v.y + dl.y;
