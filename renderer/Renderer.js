@@ -225,7 +225,7 @@ let Cam = scene.cameras[scene.activeCam];
 let rotationM = new Matrix(getCameraBasis(Cam).right, getCameraBasis(Cam).up, getCameraBasis(Cam).forward);
 
 let targetSelection = false;
-document.addEventListener("keydown", (e) => (e.key == "1" ? (targetSelection = true) : ""));
+document.addEventListener("keydown", (e) => (e.altKey ? (targetSelection = true) : ""));
 document.addEventListener("keyup", (e) => (targetSelection = false));
 let PanningEnabled = false;
 document.addEventListener("keydown", (e) => (e.key == "Shift" && targetSelection == false ? (PanningEnabled = true) : ""));
@@ -374,7 +374,7 @@ let dx = 0.5;
 let theta = 0;
 const angularspeed = Math.PI / 4;
 const reflections = 1;
-let paused = true;
+let paused = false;
 const sensitivity = 0.002;
 let camTransition = {
   active: false,

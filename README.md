@@ -163,7 +163,7 @@ RAWengine supports three light types.
 | Orbit | Left click + drag |
 | Pan | Shift + drag / Middle mouse |
 | Zoom | Mouse wheel |
-| Select object | Hold `1` + click |
+| Select object | Hold `Alt` / `Option` + click |
 | Pause / Start animation | Space |
 
 ---
